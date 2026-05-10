@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#0b1020" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="description" content="autoresearch 交互式教学：理解 AI agent 如何自主开展 LLM 研究" />
+<title>autoresearch · 交互式教学</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg-soft: #121933;
+    --panel: #182142;
+    --panel-2: #1f295a;
+    --line: #2a3568;
+    --text: #e6ecff;
+    --text-dim: #97a3d4;
+    --accent: #7cffb2;
+    --accent-2: #6ea8ff;
+    --accent-3: #ffd166;
+    --danger: #ff7a90;
+    --good: #6ee7a3;
+    --radius: 14px;
+    --radius-sm: 10px;
+    --shadow: 0 6px 20px rgba(0,0,0,.35);
+    --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, #1a2456 0%, transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, #2a1a4a 0%, transparent 60%),
+      var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+
+  /* Top progress bar */
+  .progress-wrap {
+    position: sticky; top: 0; z-index: 50;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    background: rgba(11,16,32,.7);
+    border-bottom: 1px solid var(--line);
+  }
+  .progress-bar { height: 3px; background: var(--line); position: relative; }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width .15s linear; }
+  .topnav {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; padding-top: calc(10px + env(safe-area-inset-top));
+  }
+  .logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; color: #0b1020; font-weight: 800; font-size: 14px;
+  }
+  .brand { font-weight: 700; font-size: 15px; letter-spacing: .3px; }
+  .brand small { color: var(--text-dim); font-weight: 500; margin-left: 6px; font-size: 12px; }
+
+  /* Layout */
+  .container { padding: 18px 16px 80px; max-width: 760px; margin: 0 auto; }
+  section { margin: 22px 0 36px; }
+  h1, h2, h3 { line-height: 1.25; }
+  h1 { font-size: 26px; margin: 8px 0 12px; }
+  h2 { font-size: 20px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  h2 .num {
+    display: inline-grid; place-items: center;
+    width: 26px; height: 26px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent-2), #b890ff);
+    color: #0b1020; font-size: 13px; font-weight: 800;
+  }
+  p { color: var(--text); }
+  .lead { color: var(--text-dim); font-size: 15px; }
+
+  /* Hero */
+  .hero {
+    background: linear-gradient(160deg, rgba(110,168,255,.18), rgba(124,255,178,.12) 60%, transparent);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px 18px;
+    position: relative; overflow: hidden;
+  }
+  .hero::after {
+    content: ""; position: absolute; right: -40px; top: -40px; width: 180px; height: 180px;
+    background: radial-gradient(closest-side, rgba(255,209,102,.35), transparent 70%);
+    filter: blur(8px);
+  }
+  .badge {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    background: rgba(124,255,178,.12); color: var(--accent);
+    border: 1px solid rgba(124,255,178,.25);
+    font-size: 12px; letter-spacing: .4px;
+  }
+  .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px;
+  }
+  .stat {
+    background: rgba(255,255,255,.04); border: 1px solid var(--line);
+    border-radius: var(--radius-sm); padding: 10px; text-align: center;
+  }
+  .stat .v { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: 18px; }
+  .stat .l { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+
+  /* Cards */
+  .card {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 16px; margin: 12px 0;
+    box-shadow: var(--shadow);
+  }
+  .card h3 { margin: 0 0 8px; font-size: 16px; }
+  .muted { color: var(--text-dim); font-size: 14px; }
+
+  /* File tabs (interactive code) */
+  .tabs {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .tab {
+    flex: 1; min-width: 0;
+    padding: 10px 8px; border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel); color: var(--text-dim);
+    font-family: var(--mono); font-size: 12px; cursor: pointer;
+    transition: all .2s; text-align: center;
+  }
+  .tab.active {
+    background: linear-gradient(135deg, rgba(110,168,255,.25), rgba(124,255,178,.15));
+    color: var(--text); border-color: var(--accent-2);
+  }
+  .tab .role { display: block; font-size: 10px; color: var(--text-dim); margin-top: 2px; font-family: var(--sans); }
+  .tab.active .role { color: var(--accent); }
+
+  .codepane {
+    background: #0a0f24; border: 1px solid var(--line); border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 12px; border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.03);
+    font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+  }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; }
+  .dot.r { background: #ff6e6e; } .dot.y { background: #ffcc66; } .dot.g { background: #66dd99; }
+  pre.code {
+    margin: 0; padding: 12px 14px;
+    font-family: var(--mono); font-size: 12.5px;
+    line-height: 1.65; overflow-x: auto;
+    color: #cfd6ff;
+  }
+  pre.code .ln { color: #495497; user-select: none; display: inline-block; width: 22px; text-align: right; margin-right: 10px; }
+  pre.code .kw { color: #ff95c1; }
+  pre.code .st { color: #ffd166; }
+  pre.code .cm { color: #6f7bb5; font-style: italic; }
+  pre.code .nm { color: #7cffb2; }
+  pre.code .nu { color: #b890ff; }
+  pre.code .op { color: #6ea8ff; }
+  .hl {
+    display: block; cursor: pointer; padding: 0 4px; border-radius: 4px;
+    border-left: 2px solid transparent;
+    transition: background .15s, border-color .15s;
+  }
+  .hl:hover, .hl.active { background: rgba(110,168,255,.10); border-left-color: var(--accent-2); }
+  .hl.active { background: rgba(110,168,255,.18); }
+  .explain {
+    margin-top: 10px; padding: 12px;
+    background: rgba(110,168,255,.08);
+    border: 1px dashed rgba(110,168,255,.4);
+    border-radius: var(--radius-sm);
+    font-size: 13px; color: var(--text);
+    min-height: 50px;
+  }
+  .explain .tag {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    padding: 2px 6px; border-radius: 4px;
+    background: rgba(124,255,178,.15); color: var(--accent);
+    margin-right: 6px;
+  }
+
+  /* Loop animation */
+  .loop-svg { width: 100%; height: auto; display: block; }
+  .loop-controls { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  .btn {
+    appearance: none; border: 1px solid var(--line); background: var(--panel-2);
+    color: var(--text); padding: 9px 14px; border-radius: 999px;
+    font-size: 13px; cursor: pointer; transition: all .2s;
+    display: inline-flex; align-items: center; gap: 6px;
+    font-family: var(--sans);
+  }
+  .btn:hover, .btn:active { border-color: var(--accent-2); }
+  .btn.primary {
+    background: linear-gradient(135deg, var(--accent-2), #b890ff);
+    color: #0b1020; border-color: transparent; font-weight: 600;
+  }
+  .btn.ghost { background: transparent; }
+  .step-label {
+    font-family: var(--mono); font-size: 12px; color: var(--text-dim);
+  }
+
+  /* Sandbox */
+  .ctrl { margin: 14px 0; }
+  .ctrl-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .ctrl-row label { font-size: 13px; color: var(--text-dim); }
+  .ctrl-row .v { font-family: var(--mono); color: var(--accent); font-weight: 700; }
+  input[type=range] {
+    width: 100%; -webkit-appearance: none; appearance: none;
+    background: transparent; height: 24px;
+  }
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 6px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent-2), #b890ff);
+  }
+  input[type=range]::-moz-range-track {
+    height: 6px; border-radius: 4px;
+    background: linear-gradient(90deg, var(--accent-2), #b890ff);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--accent-2);
+    margin-top: -8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--accent-2);
+  }
+  .result-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px;
+  }
+  .res {
+    padding: 10px; background: rgba(255,255,255,.04);
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+  }
+  .res .k { font-size: 11px; color: var(--text-dim); }
+  .res .vv { font-family: var(--mono); font-weight: 700; font-size: 16px; color: var(--accent-3); }
+  .res.good .vv { color: var(--accent); }
+  .res.bad .vv { color: var(--danger); }
+  .verdict {
+    margin-top: 10px; padding: 10px 12px; border-radius: var(--radius-sm);
+    font-size: 13px; border: 1px solid transparent;
+  }
+  .verdict.keep { background: rgba(124,255,178,.10); color: var(--accent); border-color: rgba(124,255,178,.4); }
+  .verdict.discard { background: rgba(255,122,144,.10); color: var(--danger); border-color: rgba(255,122,144,.4); }
+  .verdict.crash { background: rgba(255,209,102,.10); color: var(--accent-3); border-color: rgba(255,209,102,.4); }
+
+  /* Branch viz */
+  .branch-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .branch-log {
+    background: #0a0f24; border: 1px solid var(--line); border-radius: var(--radius-sm);
+    padding: 10px 12px; margin-top: 10px;
+    font-family: var(--mono); font-size: 12px;
+    max-height: 160px; overflow-y: auto;
+    color: var(--text-dim);
+  }
+  .branch-log .row { padding: 2px 0; display: flex; gap: 8px; }
+  .branch-log .row .t { color: #6ea8ff; }
+  .branch-log .row.keep .a { color: var(--accent); }
+  .branch-log .row.discard .a { color: var(--danger); }
+
+  /* Quiz */
+  .quiz .q { font-weight: 600; margin: 0 0 10px; }
+  .quiz .opts { display: grid; gap: 8px; }
+  .opt {
+    padding: 12px 14px; border: 1px solid var(--line);
+    border-radius: var(--radius-sm); background: var(--panel-2);
+    cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px;
+  }
+  .opt .marker {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--panel); border: 1px solid var(--line);
+    display: grid; place-items: center; font-family: var(--mono); font-size: 12px;
+    color: var(--text-dim); flex-shrink: 0;
+  }
+  .opt:hover { border-color: var(--accent-2); }
+  .opt.right { background: rgba(124,255,178,.12); border-color: var(--accent); }
+  .opt.right .marker { background: var(--accent); color: #0b1020; border-color: var(--accent); }
+  .opt.wrong { background: rgba(255,122,144,.10); border-color: var(--danger); }
+  .opt.wrong .marker { background: var(--danger); color: #0b1020; border-color: var(--danger); }
+  .feedback { margin-top: 10px; font-size: 13px; min-height: 20px; color: var(--text-dim); }
+  .feedback.ok { color: var(--accent); }
+  .feedback.no { color: var(--danger); }
+
+  /* Footer */
+  footer {
+    margin-top: 30px; text-align: center; color: var(--text-dim);
+    font-size: 12px; padding: 16px 0;
+  }
+  footer a { color: var(--accent-2); }
+
+  /* Section anchor offset */
+  .anchor { scroll-margin-top: 80px; }
+
+  @media (max-width: 380px) {
+    h1 { font-size: 22px; }
+    .stats { grid-template-columns: repeat(3, 1fr); }
+    .stat .v { font-size: 15px; }
+    pre.code { font-size: 11.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-wrap">
+  <div class="topnav">
+    <div class="logo">α</div>
+    <div class="brand">autoresearch <small>· 交互式教学</small></div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+</div>
+
+<div class="container">
+
+  <!-- HERO -->
+  <section class="anchor" id="hero">
+    <div class="hero">
+      <span class="badge">实验性 · 自主研究</span>
+      <h1>让 AI agent 自己做研究</h1>
+      <p class="lead">
+        给 AI 一份小而真实的 LLM 训练代码，让它<strong>修改代码 → 训练 5 分钟 → 看结果 → 保留或丢弃</strong>，
+        不停迭代。你睡觉时它在跑实验，醒来就能看到一份「实验日志」与（也许）一个更好的模型。
+      </p>
+      <div class="stats">
+        <div class="stat"><div class="v">5min</div><div class="l">单次训练时间</div></div>
+        <div class="stat"><div class="v">~12/h</div><div class="l">每小时实验数</div></div>
+        <div class="stat"><div class="v">1 file</div><div class="l">agent 只改这一个</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 1: WHAT -->
+  <section class="anchor" id="what">
+    <h2><span class="num">1</span>核心思想</h2>
+    <div class="card">
+      <h3>固定时间预算 + 单一指标</h3>
+      <p class="muted">
+        每次实验都跑 <strong>正好 5 分钟</strong>，然后报告 <code style="color:var(--accent)">val_bpb</code>（验证集上每字节的比特数，越低越好）。
+        因为时间固定，无论 agent 怎么改架构、改优化器、改 batch size，结果都是公平可比的。
+      </p>
+    </div>
+    <div class="card">
+      <h3>「只改一个文件」</h3>
+      <p class="muted">agent 只修改 <code>train.py</code>。<code>prepare.py</code> 与评估流程是只读的——这就保证了它没法「作弊」（比如改评估指标）。</p>
+    </div>
+  </section>
+
+  <!-- SECTION 2: FILES (interactive code) -->
+  <section class="anchor" id="files">
+    <h2><span class="num">2</span>三个核心文件 <span style="font-size:12px;color:var(--text-dim);font-weight:400;">点击代码行查看说明</span></h2>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-file="program">program.md<span class="role">人类编写 · skill</span></button>
+      <button class="tab" data-file="train">train.py<span class="role">agent 编辑</span></button>
+      <button class="tab" data-file="prepare">prepare.py<span class="role">只读 · 评估</span></button>
+    </div>
+
+    <div class="codepane">
+      <div class="code-header">
+        <div><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span> <span id="codeFileName">program.md</span></div>
+        <div id="codeFileRole">编排 agent 行为</div>
+      </div>
+      <pre class="code" id="codeBody"></pre>
+    </div>
+    <div class="explain" id="explainBox">
+      <span class="tag">提示</span>点击上方任意带高亮的行，了解它在 autoresearch 流程中扮演的角色。
+    </div>
+  </section>
+
+  <!-- SECTION 3: LOOP ANIMATION -->
+  <section class="anchor" id="loop">
+    <h2><span class="num">3</span>实验循环动画</h2>
+    <div class="card">
+      <p class="muted" style="margin-top:0">
+        autoresearch 不是一次性脚本，而是一个<strong>循环</strong>。点击下方按钮观察 agent 一次完整的迭代。
+      </p>
+
+      <svg viewBox="0 0 360 220" class="loop-svg" id="loopSvg" aria-label="实验循环动画">
+        <defs>
+          <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#6ea8ff"/>
+          </marker>
+        </defs>
+        <!-- nodes -->
+        <g id="loopNodes" font-family="var(--sans)" font-size="11" fill="#e6ecff">
+          <g id="n1" class="node">
+            <rect x="30" y="20" width="110" height="40" rx="10" fill="#1f295a" stroke="#2a3568"/>
+            <text x="85" y="38" text-anchor="middle">① 修改 train.py</text>
+            <text x="85" y="52" text-anchor="middle" font-size="9" fill="#97a3d4">提出新想法</text>
+          </g>
+          <g id="n2" class="node">
+            <rect x="220" y="20" width="110" height="40" rx="10" fill="#1f295a" stroke="#2a3568"/>
+            <text x="275" y="38" text-anchor="middle">② git commit</text>
+            <text x="275" y="52" text-anchor="middle" font-size="9" fill="#97a3d4">记录这次尝试</text>
+          </g>
+          <g id="n3" class="node">
+            <rect x="220" y="90" width="110" height="40" rx="10" fill="#1f295a" stroke="#2a3568"/>
+            <text x="275" y="108" text-anchor="middle">③ 训练 5 分钟</text>
+            <text x="275" y="122" text-anchor="middle" font-size="9" fill="#97a3d4">uv run train.py</text>
+          </g>
+          <g id="n4" class="node">
+            <rect x="125" y="90" width="120" height="40" rx="10" fill="#1f295a" stroke="#2a3568"/>
+            <text x="185" y="108" text-anchor="middle">④ 读取 val_bpb</text>
+            <text x="185" y="122" text-anchor="middle" font-size="9" fill="#97a3d4">变好了吗？</text>
+          </g>
+          <g id="n5" class="node">
+            <rect x="20" y="160" width="120" height="40" rx="10" fill="#1f295a" stroke="#2a3568"/>
+            <text x="80" y="178" text-anchor="middle">⑤a 保留 keep</text>
+            <text x="80" y="192" text-anchor="middle" font-size="9" fill="#97a3d4">分支前进</text>
+          </g>
+          <g id="n6" class="node">
+            <rect x="220" y="160" width="120" height="40" rx="10" fill="#1f295a" stroke="#2a3568"/>
+            <text x="280" y="178" text-anchor="middle">⑤b 丢弃 discard</text>
+            <text x="280" y="192" text-anchor="middle" font-size="9" fill="#97a3d4">git reset 回退</text>
+          </g>
+        </g>
+        <!-- arrows -->
+        <g id="loopEdges" stroke="#3a4880" stroke-width="1.5" fill="none" marker-end="url(#arrow)">
+          <path id="e1" d="M140,40 L218,40"/>
+          <path id="e2" d="M275,62 L275,88"/>
+          <path id="e3" d="M218,110 L247,110"/>
+          <path id="e4" d="M150,128 Q90,140 80,158"/>
+          <path id="e5" d="M220,128 Q260,142 280,158"/>
+          <path id="e6" d="M80,200 Q20,150 30,60" />
+        </g>
+        <!-- moving token -->
+        <circle id="token" r="6" fill="#ffd166" cx="-20" cy="-20" />
+      </svg>
+
+      <div class="loop-controls">
+        <button class="btn primary" id="loopPlay">▶ 播放循环</button>
+        <button class="btn ghost" id="loopStep">下一步</button>
+        <span class="step-label" id="stepLabel">就绪</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION 4: PARAMETER SANDBOX -->
+  <section class="anchor" id="sandbox">
+    <h2><span class="num">4</span>参数沙盒</h2>
+    <div class="card">
+      <p class="muted" style="margin-top:0">
+        模拟一次 5 分钟实验：调整下方滑块，观察 <code style="color:var(--accent-3)">val_bpb</code> 与显存的变化。
+        这个模型只是教学用的简化模拟器，实际趋势与真实训练大致一致。
+      </p>
+
+      <div class="ctrl">
+        <div class="ctrl-row"><label>模型深度（n_layer）</label><span class="v" id="vDepth">12</span></div>
+        <input type="range" id="depth" min="2" max="20" value="12" step="1" />
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row"><label>隐藏维度（n_embd）</label><span class="v" id="vEmbd">768</span></div>
+        <input type="range" id="embd" min="128" max="1536" value="768" step="64" />
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row"><label>学习率 × 100</label><span class="v" id="vLr">2.00</span></div>
+        <input type="range" id="lr" min="10" max="100" value="200" step="5" />
+      </div>
+      <div class="ctrl">
+        <div class="ctrl-row"><label>batch size（×1024 tokens）</label><span class="v" id="vBs">32</span></div>
+        <input type="range" id="bs" min="4" max="64" value="32" step="4" />
+      </div>
+
+      <div class="result-grid">
+        <div class="res" id="rBpb"><div class="k">val_bpb</div><div class="vv">—</div></div>
+        <div class="res" id="rVram"><div class="k">peak_vram</div><div class="vv">—</div></div>
+        <div class="res" id="rSteps"><div class="k">num_steps</div><div class="vv">—</div></div>
+        <div class="res" id="rParams"><div class="k">num_params</div><div class="vv">—</div></div>
+      </div>
+      <div class="verdict" id="verdict">调一调，看看 agent 会保留还是丢弃这次尝试。</div>
+    </div>
+  </section>
+
+  <!-- SECTION 5: BRANCH ADVANCE -->
+  <section class="anchor" id="branch">
+    <h2><span class="num">5</span>分支推进可视化</h2>
+    <div class="card">
+      <p class="muted" style="margin-top:0">
+        每次实验如果改进了，commit 就保留，分支前进；否则 <code>git reset</code> 回退。
+        点几次「跑实验」看看一条研究分支是怎么生长的。
+      </p>
+      <svg id="branchSvg" viewBox="0 0 360 200" class="loop-svg" aria-label="分支推进可视化">
+        <line id="trunk" x1="20" y1="100" x2="20" y2="100" stroke="#6ea8ff" stroke-width="3"/>
+        <g id="commits"></g>
+        <text id="bpbLabel" x="340" y="20" text-anchor="end" font-family="var(--mono)" font-size="11" fill="#7cffb2">val_bpb: 1.000</text>
+      </svg>
+      <div class="branch-controls">
+        <button class="btn primary" id="runExp">▶ 跑一次实验</button>
+        <button class="btn ghost" id="resetExp">重置</button>
+        <span class="step-label" id="branchStat">实验数 0 · 保留 0</span>
+      </div>
+      <div class="branch-log" id="branchLog"><div class="row"><span class="t">$</span><span>等待开始…</span></div></div>
+    </div>
+  </section>
+
+  <!-- SECTION 6: QUIZ -->
+  <section class="anchor" id="quiz">
+    <h2><span class="num">6</span>知识检测</h2>
+    <div class="card quiz" id="quiz"></div>
+  </section>
+
+  <footer>
+    <p>
+      基于 <a href="https://github.com/karpathy/nanochat" target="_blank" rel="noopener">nanochat</a> ·
+      项目源代码见 <code>train.py / prepare.py / program.md</code>
+    </p>
+    <p style="opacity:.7">本页为单文件交互式教学 · 适合手机浏览</p>
+  </footer>
+
+</div>
+
+<script>
+/* ----------------------------- Code data ----------------------------- */
+const FILES = {
+  program: {
+    name: "program.md",
+    role: "人类编写 · 编排 agent",
+    lines: [
+      { code: "# autoresearch", k: "title", note: "这是给 agent 的「skill 文档」——它读完才知道任务、规则与流程。" },
+      { code: "", k: "" },
+      { code: "## Setup", k: "h2", note: "初始化阶段：建分支、读文件、创建结果表。" },
+      { code: "1. Agree on a run tag (e.g. `mar5`).", k: "li", note: "为这次研究取一个标签，作为分支名。" },
+      { code: "2. Create branch: `git checkout -b autoresearch/<tag>`.", k: "li", note: "所有改动都活在这条分支上。" },
+      { code: "3. Read README, prepare.py, train.py.", k: "li", note: "agent 必须先把上下文读全，否则容易乱改。" },
+      { code: "", k: "" },
+      { code: "## Experimentation", k: "h2", note: "实验阶段的总规则。" },
+      { code: "**You CAN**: modify train.py.", k: "rule", note: "agent 只能动一个文件——这是设计上的关键约束。" },
+      { code: "**You CANNOT**: modify prepare.py.", k: "rule", note: "评估代码必须只读，否则就没法公平比较了。" },
+      { code: "Goal: lowest val_bpb.", k: "goal", note: "唯一指标：验证集上的 bits-per-byte，越低越好。" },
+      { code: "", k: "" },
+      { code: "## Loop", k: "h2", note: "下面是每次迭代要做的事。" },
+      { code: "LOOP FOREVER:", k: "loop", note: "agent 不是跑一次就停，而是无限迭代直到人类喊停。" },
+      { code: "  if better → keep commit", k: "branch", note: "改进就保留：分支向前生长。" },
+      { code: "  else → git reset", k: "branch", note: "没改进就回退：把这次尝试当作没发生。" },
+    ],
+  },
+  train: {
+    name: "train.py",
+    role: "agent 编辑此文件",
+    lines: [
+      { code: '@dataclass', k: "deco" },
+      { code: 'class GPTConfig:', k: "cls", note: "GPT 的所有超参集中在这——agent 改它就等于改架构。" },
+      { code: '    sequence_len = 2048', k: "cfg", note: "训练时使用的上下文长度（来自 prepare.py，固定）。" },
+      { code: '    n_layer = 12', k: "cfg", note: "Transformer 块的数量。增大 → 模型更强但更慢。" },
+      { code: '    n_head = 6', k: "cfg", note: "多头注意力中头的数量。" },
+      { code: '    n_embd = 768', k: "cfg", note: "隐藏维度。也是 agent 经常调整的参数之一。" },
+      { code: '    window_pattern = "SSSL"', k: "cfg", note: "S=滑动窗口注意力，L=完整注意力，交替使用以省显存。" },
+      { code: '', k: "" },
+      { code: 'class CausalSelfAttention(nn.Module):', k: "cls", note: "因果自注意力——LLM 的核心算子。" },
+      { code: '    q = c_q(x); k = c_k(x); v = c_v(x)', k: "code", note: "把输入 x 投影成 query/key/value 三组向量。" },
+      { code: '    out = fa3.flash_attn_func(q, k, v)', k: "code", note: "调用 FlashAttention3 内核：训练显存友好、速度快。" },
+      { code: '', k: "" },
+      { code: '# Optimizer: Muon for hidden, AdamW for embed', k: "cm", note: "agent 完全可以更换优化器、学习率调度等。" },
+      { code: 'opt_muon = Muon(matmul_params, lr=lr)', k: "code", note: "Muon 适合矩阵参数，比 AdamW 收敛更快。" },
+      { code: 'opt_adamw = AdamW(other_params, lr=lr)', k: "code", note: "嵌入与 LayerNorm 等用 AdamW 更稳。" },
+      { code: '', k: "" },
+      { code: 'while time_used < TIME_BUDGET:', k: "loop", note: "训练循环按「墙上时间」停止，正好 5 分钟。" },
+      { code: '    loss.backward(); opt.step()', k: "code", note: "标准的反向传播 + 优化器更新。" },
+      { code: 'val_bpb = evaluate_bpb(model)', k: "metric", note: "训练结束后调用 prepare.py 中的评估函数。" },
+    ],
+  },
+  prepare: {
+    name: "prepare.py",
+    role: "只读 · 数据与评估",
+    lines: [
+      { code: "MAX_SEQ_LEN = 2048", k: "cfg", note: "全局序列长度。agent 不能动这个，否则破坏可比性。" },
+      { code: "TIME_BUDGET = 300  # seconds", k: "cfg", note: "实验时间预算：5 分钟。" },
+      { code: "EVAL_TOKENS = 8_000_000", k: "cfg", note: "评估集 token 数量。多一点 → 评估更稳。" },
+      { code: "", k: "" },
+      { code: "class Tokenizer:", k: "cls", note: "BPE 分词器，固定 vocab，agent 不能换。" },
+      { code: "    vocab_size = 32768", k: "cfg" },
+      { code: "", k: "" },
+      { code: "def make_dataloader(split):", k: "fn", note: "数据加载器：从已下载的 shards 里取 batch。" },
+      { code: "    return iter_over_shards(split)", k: "code" },
+      { code: "", k: "" },
+      { code: "def evaluate_bpb(model) -> float:", k: "fn", note: "唯一权威的评估函数。所有实验最终用它打分。" },
+      { code: "    nll = total_nll(model, val_data)", k: "code", note: "在验证集上累加负对数似然。" },
+      { code: "    bpb = nll / total_bytes / ln(2)", k: "code", note: "归一化为 bits-per-byte：与 vocab 大小无关，跨实验公平。" },
+      { code: "    return bpb", k: "code" },
+    ],
+  },
+};
+
+/* ----------------------------- Render code ----------------------------- */
+const codeBody = document.getElementById("codeBody");
+const codeFileName = document.getElementById("codeFileName");
+const codeFileRole = document.getElementById("codeFileRole");
+const explainBox = document.getElementById("explainBox");
+
+function renderFile(key) {
+  const f = FILES[key];
+  codeFileName.textContent = f.name;
+  codeFileRole.textContent = f.role;
+  codeBody.innerHTML = "";
+  f.lines.forEach((ln, i) => {
+    const span = document.createElement("span");
+    span.className = "hl";
+    if (!ln.note) span.classList.add("nointer");
+    span.dataset.note = ln.note || "";
+    span.dataset.code = ln.code;
+    span.innerHTML = `<span class="ln">${String(i+1).padStart(2," ")}</span>` + colorize(ln.code);
+    if (ln.note) {
+      span.addEventListener("click", () => {
+        document.querySelectorAll(".hl.active").forEach(e => e.classList.remove("active"));
+        span.classList.add("active");
+        explainBox.innerHTML = `<span class="tag">${escapeHtml(ln.code.trim().slice(0, 28) || "说明")}</span>${escapeHtml(ln.note)}`;
+      });
+    } else {
+      span.style.cursor = "default";
+    }
+    codeBody.appendChild(span);
+  });
+  explainBox.innerHTML = `<span class="tag">提示</span>点击带高亮的代码行查看说明。`;
+}
+
+function escapeHtml(s){return s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));}
+
+function colorize(code) {
+  if (!code.trim()) return "&nbsp;";
+  let s = escapeHtml(code);
+  // comments
+  s = s.replace(/(#.*$)/g, '<span class="cm">$1</span>');
+  // strings (escapeHtml has already converted " to &quot;)
+  s = s.replace(/(&quot;[^&]*?&quot;|'[^']*?'|`[^`]*?`)/g, '<span class="st">$1</span>');
+  // keywords
+  s = s.replace(/\b(class|def|return|while|if|else|import|from|for|in|self|@dataclass|LOOP FOREVER)\b/g, '<span class="kw">$1</span>');
+  // numbers
+  s = s.replace(/\b(\d+_?\d*)\b/g, '<span class="nu">$1</span>');
+  // operators
+  s = s.replace(/(=|→|&gt;|&lt;)/g, '<span class="op">$1</span>');
+  return s;
+}
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    renderFile(tab.dataset.file);
+  });
+});
+renderFile("program");
+
+/* ----------------------------- Loop animation ----------------------------- */
+const stepsAnim = [
+  { edge: "e1", label: "① → ②  提交修改" },
+  { edge: "e2", label: "② → ③  开始训练" },
+  { edge: "e3", label: "③ → ④  读取结果" },
+  { edge: "e4", label: "④ → ⑤a  改进了！保留" },
+  { edge: "e6", label: "回到 ①  下一次迭代" },
+];
+const stepsAnimDiscard = [
+  { edge: "e1", label: "① → ②  提交修改" },
+  { edge: "e2", label: "② → ③  开始训练" },
+  { edge: "e3", label: "③ → ④  读取结果" },
+  { edge: "e5", label: "④ → ⑤b  没改进，git reset" },
+  { edge: "e6", label: "回到 ①  下一次迭代" },
+];
+const token = document.getElementById("token");
+const stepLabel = document.getElementById("stepLabel");
+let loopRunning = false, loopIdx = 0, loopVariant = stepsAnim;
+
+function animateAlong(pathId, dur, cb) {
+  const path = document.getElementById(pathId);
+  const len = path.getTotalLength();
+  const start = performance.now();
+  function frame(now) {
+    const t = Math.min(1, (now - start) / dur);
+    const p = path.getPointAtLength(len * t);
+    token.setAttribute("cx", p.x);
+    token.setAttribute("cy", p.y);
+    if (t < 1) requestAnimationFrame(frame);
+    else cb && cb();
+  }
+  requestAnimationFrame(frame);
+}
+
+function loopOneStep(then) {
+  const s = loopVariant[loopIdx];
+  if (!s) { loopIdx = 0; loopVariant = Math.random() > 0.5 ? stepsAnim : stepsAnimDiscard; stepLabel.textContent = "新一轮"; then && then(); return; }
+  stepLabel.textContent = s.label;
+  animateAlong(s.edge, 800, () => { loopIdx++; then && then(); });
+}
+
+document.getElementById("loopPlay").addEventListener("click", () => {
+  if (loopRunning) { loopRunning = false; document.getElementById("loopPlay").textContent = "▶ 播放循环"; return; }
+  loopRunning = true;
+  document.getElementById("loopPlay").textContent = "⏸ 暂停";
+  function chain() {
+    if (!loopRunning) return;
+    loopOneStep(() => setTimeout(chain, 350));
+  }
+  chain();
+});
+document.getElementById("loopStep").addEventListener("click", () => {
+  if (loopRunning) return;
+  loopOneStep();
+});
+
+/* ----------------------------- Sandbox ----------------------------- */
+const $ = id => document.getElementById(id);
+const ctrls = {
+  depth: $("depth"), embd: $("embd"), lr: $("lr"), bs: $("bs"),
+  vDepth: $("vDepth"), vEmbd: $("vEmbd"), vLr: $("vLr"), vBs: $("vBs"),
+};
+
+function recomputeSandbox() {
+  const depth = +ctrls.depth.value;
+  const embd  = +ctrls.embd.value;
+  const lr    = +ctrls.lr.value / 100;     // 0.1 ~ 1.0
+  const bs    = +ctrls.bs.value;            // 4 ~ 64
+
+  ctrls.vDepth.textContent = depth;
+  ctrls.vEmbd.textContent  = embd;
+  ctrls.vLr.textContent    = (lr).toFixed(2);
+  ctrls.vBs.textContent    = bs;
+
+  // simplified mock model:
+  // - val_bpb: convex around (depth=10, embd=768, lr=0.4, bs=32)
+  // - vram: grows with depth*embd^2 and bs
+  // - num_params (M): scales with depth * embd^2 / 1e6
+
+  const params = depth * embd * embd * 12 / 1e6; // rough
+  const vram = 4 + params * 0.55 + bs * 0.25; // GB
+  const lrPenalty = Math.pow(Math.log(lr/0.4), 2) * 0.03;
+  const depthPenalty = Math.pow((depth - 10) / 8, 2) * 0.02;
+  const embdPenalty  = Math.pow((embd - 768) / 768, 2) * 0.02;
+  const bsPenalty    = Math.pow(Math.log(bs / 32), 2) * 0.008;
+  const sizeBonus    = Math.min(0.06, params / 1500);
+  const baseline     = 1.000;
+
+  let bpb = baseline - sizeBonus + lrPenalty + depthPenalty + embdPenalty + bsPenalty;
+  // 5-min budget penalty: bigger model => fewer steps => slightly worse
+  const stepsApprox = Math.max(50, Math.round(950 * 32 / bs * Math.pow(768 / embd, 1.5) * Math.pow(12 / depth, 0.7)));
+  bpb += Math.max(0, (300 - stepsApprox) / 8000);
+
+  // OOM check: > 80GB -> crash
+  const oom = vram > 78 || params > 600;
+  // LR explode
+  const blowup = lr > 0.85 || (lr < 0.12 && depth > 14);
+
+  $("rBpb").querySelector(".vv").textContent = oom || blowup ? "—" : bpb.toFixed(4);
+  $("rVram").querySelector(".vv").textContent = vram.toFixed(1) + " GB";
+  $("rSteps").querySelector(".vv").textContent = stepsApprox;
+  $("rParams").querySelector(".vv").textContent = params.toFixed(1) + "M";
+
+  const v = $("verdict");
+  v.classList.remove("keep","discard","crash");
+  if (oom) {
+    v.classList.add("crash");
+    v.innerHTML = "🔥 <strong>crash</strong> — 显存不够，OOM。agent 会回退并尝试更小的模型。";
+  } else if (blowup) {
+    v.classList.add("crash");
+    v.innerHTML = "💥 <strong>crash</strong> — 学习率太极端，loss 发散。agent 会调整 LR 后重试。";
+  } else if (bpb < baseline - 0.005) {
+    v.classList.add("keep");
+    v.innerHTML = "✅ <strong>keep</strong> — val_bpb 显著降低，分支前进。";
+  } else if (bpb < baseline + 0.002) {
+    v.classList.add("keep");
+    v.innerHTML = "🟢 <strong>keep</strong>（简化窗口）— 与基线相当但若代码更简洁则保留。";
+  } else {
+    v.classList.add("discard");
+    v.innerHTML = "❌ <strong>discard</strong> — val_bpb 没有改进，git reset 回退。";
+  }
+}
+["depth","embd","lr","bs"].forEach(id => ctrls[id].addEventListener("input", recomputeSandbox));
+recomputeSandbox();
+
+/* ----------------------------- Branch viz ----------------------------- */
+const branchSvg = document.getElementById("branchSvg");
+const trunk = document.getElementById("trunk");
+const commitsG = document.getElementById("commits");
+const bpbLabel = document.getElementById("bpbLabel");
+const branchLog = document.getElementById("branchLog");
+const branchStat = document.getElementById("branchStat");
+let branchState = { x: 30, count: 0, kept: 0, bpb: 1.000, current: 30 };
+
+function svgEl(tag, attrs) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+function logRow(text, type) {
+  const div = document.createElement("div");
+  div.className = "row " + (type || "");
+  div.innerHTML = `<span class="t">$</span><span class="a">${text}</span>`;
+  branchLog.prepend(div);
+}
+
+function runOneExp() {
+  const ideas = [
+    ["增大 LR 到 0.04", -0.012],
+    ["切换到 GeLU 激活", +0.008],
+    ["depth=8 → depth=10", -0.006],
+    ["加 dropout 0.1", +0.015],
+    ["weight decay 0.1", -0.003],
+    ["把 attention window 改 SSSL → SSL", +0.001],
+    ["scale embd 768 → 832", -0.004],
+    ["AdamW lr × 1.2", -0.002],
+    ["移除 bias 参数", -0.001],
+    ["改回标准 attention（OOM）", null], // crash
+  ];
+  const pick = ideas[Math.floor(Math.random() * ideas.length)];
+  branchState.count++;
+
+  if (pick[1] === null) {
+    logRow(`exp #${branchState.count} · ${pick[0]} → 💥 crash`, "discard");
+    branchStat.textContent = `实验数 ${branchState.count} · 保留 ${branchState.kept}`;
+    return;
+  }
+
+  const newBpb = +(branchState.bpb + pick[1]).toFixed(4);
+  const branchY = 100;
+  const x = branchState.current;
+
+  if (pick[1] < 0) {
+    // keep: extend trunk to the right
+    const nx = x + 28;
+    trunk.setAttribute("x2", nx);
+    const dot = svgEl("circle", { cx: nx, cy: branchY, r: 6, fill: "#7cffb2", stroke: "#0b1020", "stroke-width": 2 });
+    commitsG.appendChild(dot);
+    const lbl = svgEl("text", { x: nx, y: branchY - 12, "text-anchor":"middle", "font-family":"var(--mono)", "font-size":"9", fill:"#7cffb2" });
+    lbl.textContent = newBpb.toFixed(3);
+    commitsG.appendChild(lbl);
+    branchState.bpb = newBpb;
+    branchState.current = nx;
+    branchState.kept++;
+    bpbLabel.textContent = `val_bpb: ${newBpb.toFixed(3)}`;
+    logRow(`exp #${branchState.count} · ${pick[0]} → val_bpb ${newBpb.toFixed(4)} ✓ keep`, "keep");
+  } else {
+    // discard: branch dot above, then return
+    const nx = x + 16;
+    const ny = branchY - 30;
+    const path = svgEl("path", {
+      d: `M ${x} ${branchY} Q ${x + 8} ${ny} ${nx} ${ny} Q ${x + 24} ${ny} ${x + 16} ${branchY}`,
+      stroke: "#ff7a90", "stroke-width": 1.5, fill: "none", "stroke-dasharray": "3 3"
+    });
+    commitsG.appendChild(path);
+    const dot = svgEl("circle", { cx: nx, cy: ny, r: 5, fill: "#ff7a90", stroke: "#0b1020", "stroke-width": 2 });
+    commitsG.appendChild(dot);
+    logRow(`exp #${branchState.count} · ${pick[0]} → val_bpb ${newBpb.toFixed(4)} ✗ discard`, "discard");
+  }
+  branchStat.textContent = `实验数 ${branchState.count} · 保留 ${branchState.kept}`;
+
+  // auto-scroll svg if needed
+  if (branchState.current > 320) {
+    // shift everything left by reset
+    setTimeout(() => {
+      // do nothing fancy; just stop
+    }, 100);
+  }
+}
+
+document.getElementById("runExp").addEventListener("click", runOneExp);
+document.getElementById("resetExp").addEventListener("click", () => {
+  commitsG.innerHTML = "";
+  trunk.setAttribute("x2", 20);
+  branchState = { x: 30, count: 0, kept: 0, bpb: 1.000, current: 30 };
+  bpbLabel.textContent = "val_bpb: 1.000";
+  branchLog.innerHTML = `<div class="row"><span class="t">$</span><span>已重置</span></div>`;
+  branchStat.textContent = `实验数 0 · 保留 0`;
+});
+
+/* ----------------------------- Quiz ----------------------------- */
+const QUIZ = [
+  {
+    q: "1. autoresearch 中 agent 只能修改哪个文件？",
+    opts: ["prepare.py", "train.py", "program.md", "README.md"],
+    a: 1,
+    why: "train.py 是唯一允许 agent 修改的文件，prepare.py 与评估流程是只读的。"
+  },
+  {
+    q: "2. 单次实验的训练时间预算是？",
+    opts: ["1 分钟", "5 分钟", "30 分钟", "直到收敛"],
+    a: 1,
+    why: "固定 5 分钟（墙上时间）。这样无论改什么，结果都直接可比。"
+  },
+  {
+    q: "3. 用什么指标衡量改进？（越低越好）",
+    opts: ["accuracy", "perplexity", "val_bpb (bits per byte)", "loss"],
+    a: 2,
+    why: "val_bpb 与 vocab 大小无关，跨架构改动可以公平比较。"
+  },
+  {
+    q: "4. 实验结果不如基线时，agent 应该？",
+    opts: ["继续叠加新改动", "git reset 回退", "强行 push", "结束循环"],
+    a: 1,
+    why: "没改进就回退到上一个 commit，分支只朝改进的方向生长。"
+  },
+];
+
+const quizEl = document.getElementById("quiz");
+QUIZ.forEach((qq, qi) => {
+  const wrap = document.createElement("div");
+  wrap.style.marginBottom = "18px";
+  wrap.innerHTML = `<p class="q">${qq.q}</p>`;
+  const opts = document.createElement("div");
+  opts.className = "opts";
+  qq.opts.forEach((o, oi) => {
+    const btn = document.createElement("div");
+    btn.className = "opt";
+    btn.innerHTML = `<span class="marker">${"ABCD"[oi]}</span><span>${o}</span>`;
+    btn.addEventListener("click", () => {
+      if (wrap.dataset.done) return;
+      wrap.dataset.done = "1";
+      const correct = oi === qq.a;
+      btn.classList.add(correct ? "right" : "wrong");
+      if (!correct) {
+        opts.children[qq.a].classList.add("right");
+      }
+      const fb = document.createElement("div");
+      fb.className = "feedback " + (correct ? "ok" : "no");
+      fb.textContent = (correct ? "✓ 正确！ " : "✗ 不对。") + qq.why;
+      wrap.appendChild(fb);
+      updateProgressBar();
+    });
+    opts.appendChild(btn);
+  });
+  wrap.appendChild(opts);
+  quizEl.appendChild(wrap);
+});
+
+/* ----------------------------- Reading progress ----------------------------- */
+const progressFill = document.getElementById("progressFill");
+function updateProgressBar() {
+  const h = document.documentElement;
+  const max = h.scrollHeight - h.clientHeight;
+  const v = max > 0 ? Math.min(100, (h.scrollTop / max) * 100) : 0;
+  progressFill.style.width = v + "%";
+}
+window.addEventListener("scroll", updateProgressBar, { passive: true });
+window.addEventListener("resize", updateProgressBar);
+updateProgressBar();
+</script>
+</body>
+</html>
